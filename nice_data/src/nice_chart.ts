@@ -1,16 +1,20 @@
 import * as d3 from "d3";
 let verzamel_hash = {};
-let mindate = new Date("2100-01-01");
-let maxdate = new Date("1900-01-01");
+let mindate = new Date("2020-03-01");
+let maxdate = new Date("2021-03-01");
 
-const vw = Math.max(
+let vw = Math.max(
   document.documentElement.clientWidth || 0,
   window.innerWidth || 0
 );
-const vh = Math.max(
+let vh = Math.max(
   document.documentElement.clientHeight || 0,
   window.innerHeight || 0
 );
+let margin = Math.round(vh * 0.01 + vw * 0.01);
+
+vw -= margin * 2;
+vh -= margin * 2;
 
 let svg = d3.select("svg#combined_chart");
 // svg.style("height", `${vh}px`);
@@ -18,7 +22,7 @@ let svg = d3.select("svg#combined_chart");
 let g = svg.append("g");
 
 let g_x_axis = g.append("g");
-let x = d3.scaleTime().domain([maxdate, mindate]).range([0, 100]);
+let x = d3.scaleTime().domain([mindate, maxdate]).range([0, 100]);
 let x_axis = d3.axisBottom(x);
 g_x_axis.call(x_axis);
 let x_axis_height = g_x_axis.node().getBBox().height;
@@ -29,17 +33,24 @@ let y_axis = d3.axisLeft(y);
 g_y_axis.call(y_axis);
 let y_axis_width = g_y_axis.node().getBBox().width;
 
-g_x_axis.attr("transform", `translate(${y_axis_width},${vh - x_axis_height})`);
+g_x_axis.attr(
+  "transform",
+  `translate(${y_axis_width + margin},${vh - x_axis_height + margin})`
+);
 x.range([0, vw - y_axis_width]);
 g_x_axis.call(x_axis);
 
-g_y_axis.attr("transform", `translate(${y_axis_width},0)`);
+g_y_axis.attr("transform", `translate(${y_axis_width + margin},${margin})`);
 y.range([vh - x_axis_height, 0]);
 g_y_axis.call(y_axis);
 
-let g_chart = g.append("g");
+let g_chart = g
+  .append("g")
+  .attr("transform", `translate(${y_axis_width + margin},${margin})`);
 
-let add_to_hash = (
+const g_aanwezig = g_chart.append("g").classed('aanwezig_ic_dag',true);
+
+const add_to_hash = (
   verzamel_hash: { [key: string]: { [key: string]: number } },
   varname: string,
   a: Array<any>,
@@ -52,6 +63,7 @@ let add_to_hash = (
       let curdate = new Date(e.date);
 
       a[e.date] = {
+        data: e.date,
         jsdate: curdate,
       };
 
@@ -75,6 +87,18 @@ let add_to_hash = (
   }, verzamel_hash);
 
   return r;
+};
+
+interface DataPunt {
+  date: string;
+  [key: string]: any;
+}
+
+const datalijst = (): Array<DataPunt> => Object.values(verzamel_hash);
+
+const update_x_axis = () => {
+  x.domain([mindate, maxdate]);
+  g_x_axis.call(x_axis);
 };
 
 Promise.all([
@@ -109,8 +133,41 @@ Promise.all([
     .json("https://www.stichting-nice.nl/covid-19/public/intake-count/")
     .then((data: Array<{}>) => {
       add_to_hash(verzamel_hash, "aanwezig_ic_dag", data);
+      update_x_axis();
+
+      let dots_aanwezig = g_aanwezig
+        .selectAll("circle.dot")
+        .data(datalijst(), (d: DataPunt) => d.date);
+
+      dots_aanwezig
+        .enter()
+        .append("circle")
+        .classed("dot", true)
+        .attr("r", 2)
+        .attr("cx", (d) => x(d.jsdate))
+        .attr("cy", (d) => y(d.aanwezig_ic_dag));
+
+      g_aanwezig
+        .append("path")
+        .datum(datalijst)
+        .attr("fill", "none")
+        .attr(
+          "d",
+          //@ts-expect-error //@
+          d3
+            .line()
+            .x(function (d:any) {
+              return x(d.jsdate);
+            })
+            .y(function (d:any) {
+              return y(d.aanwezig_ic_dag);
+            })
+        );
     }),
-]).then(() => {
-  console.log(mindate, maxdate);
-  console.log(verzamel_hash);
-});
+])
+  .then(() => {
+    // voor sommige visualisaties zijn meer databronnen nodig, dus die kunnen pas als alles binnen is
+  })
+  .catch((e) => {
+    console.log(e);
+  });
