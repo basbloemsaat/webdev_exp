@@ -1,54 +1,56 @@
 import * as d3 from "d3";
-let verzamel_hash = {};
+const verzamel_hash = {};
 let mindate = new Date("2020-03-01");
 let maxdate = new Date("2021-03-01");
 
-let vw = Math.max(
-  document.documentElement.clientWidth || 0,
-  window.innerWidth || 0
-);
-let vh = Math.max(
-  document.documentElement.clientHeight || 0,
-  window.innerHeight || 0
-);
-let margin = Math.round(vh * 0.01 + vw * 0.01);
+const svg = d3.select("svg#combined_chart");
+const vh = parseInt(svg.style("height"));
+const vw = parseInt(svg.style("width"));
 
-vw -= margin * 2;
-vh -= margin * 2;
+const dot_r = 2;
 
-let svg = d3.select("svg#combined_chart");
-// svg.style("height", `${vh}px`);
+const g = svg.append("g");
 
-let g = svg.append("g");
-
-let g_x_axis = g.append("g");
-let x = d3.scaleTime().domain([mindate, maxdate]).range([0, 100]);
-let x_axis = d3.axisBottom(x);
+const g_x_axis = g.append("g");
+const x = d3.scaleTime().domain([mindate, maxdate]).range([0, 100]);
+const x_axis = d3.axisBottom(x);
 g_x_axis.call(x_axis);
 let x_axis_height = g_x_axis.node().getBBox().height;
 
-let g_y_axis = g.append("g");
-let y = d3.scaleLinear().domain([0, 1500]).range([100, 0]);
-let y_axis = d3.axisLeft(y);
-g_y_axis.call(y_axis);
+const g_y_axis = g.append("g");
+let y: d3.ScaleLogarithmic<any, any, any> | d3.ScaleLinear<any, any, any>;
+let y_axis: d3.Axis<any>;
+
+let set_y_scale = (type: string = "log") => {
+  if (type == "log") {
+    y = d3
+      .scaleLog()
+      .domain([1, 1500])
+      .range([vh - x_axis_height, 0]);
+  } else {
+    y = d3
+      .scaleLinear()
+      .domain([0, 1500])
+      .range([vh - x_axis_height, 0]);
+  }
+  y_axis = d3.axisLeft(y).tickFormat((e) => `${e}`);
+  g_y_axis.call(y_axis);
+};
+
+set_y_scale();
 let y_axis_width = g_y_axis.node().getBBox().width;
 
-g_x_axis.attr(
-  "transform",
-  `translate(${y_axis_width + margin},${vh - x_axis_height + margin})`
-);
-x.range([0, vw - y_axis_width]);
+g_x_axis.attr("transform", `translate(${y_axis_width},${vh - x_axis_height})`);
+x.range([0, vw - y_axis_width - dot_r]);
 g_x_axis.call(x_axis);
 
-g_y_axis.attr("transform", `translate(${y_axis_width + margin},${margin})`);
-y.range([vh - x_axis_height, 0]);
-g_y_axis.call(y_axis);
+g_y_axis.attr("transform", `translate(${y_axis_width},0)`);
 
-let g_chart = g
-  .append("g")
-  .attr("transform", `translate(${y_axis_width + margin},${margin})`);
+// chart + curves
+const g_chart = g.append("g").attr("transform", `translate(${y_axis_width},0)`);
 
-const g_aanwezig = g_chart.append("g").classed('aanwezig_ic_dag',true);
+const g_aanwezig = g_chart.append("g").classed("aanwezig_ic_dag", true);
+g_aanwezig.append("path");
 
 const add_to_hash = (
   verzamel_hash: { [key: string]: { [key: string]: number } },
@@ -94,7 +96,22 @@ interface DataPunt {
   [key: string]: any;
 }
 
-const datalijst = (): Array<DataPunt> => Object.values(verzamel_hash);
+const datalijst = (attr?: string, avg_day: number = 1): Array<DataPunt> => {
+  if (attr) {
+    let a = Object.values(verzamel_hash).map((e: DataPunt) => {
+      let x: DataPunt = {
+        date: e.date,
+      };
+      x[attr] = e[attr];
+
+      return x;
+    });
+
+    return a;
+  } else {
+    return Object.values(verzamel_hash);
+  }
+};
 
 const update_x_axis = () => {
   x.domain([mindate, maxdate]);
@@ -134,35 +151,7 @@ Promise.all([
     .then((data: Array<{}>) => {
       add_to_hash(verzamel_hash, "aanwezig_ic_dag", data);
       update_x_axis();
-
-      let dots_aanwezig = g_aanwezig
-        .selectAll("circle.dot")
-        .data(datalijst(), (d: DataPunt) => d.date);
-
-      dots_aanwezig
-        .enter()
-        .append("circle")
-        .classed("dot", true)
-        .attr("r", 2)
-        .attr("cx", (d) => x(d.jsdate))
-        .attr("cy", (d) => y(d.aanwezig_ic_dag));
-
-      g_aanwezig
-        .append("path")
-        .datum(datalijst)
-        .attr("fill", "none")
-        .attr(
-          "d",
-          //@ts-expect-error //@
-          d3
-            .line()
-            .x(function (d:any) {
-              return x(d.jsdate);
-            })
-            .y(function (d:any) {
-              return y(d.aanwezig_ic_dag);
-            })
-        );
+      draw_aanwezig();
     }),
 ])
   .then(() => {
@@ -171,3 +160,51 @@ Promise.all([
   .catch((e) => {
     console.log(e);
   });
+
+d3.select("select#yaxis").on("change", (e) => {
+  set_y_scale(e.target.value);
+  redraw_curves();
+});
+
+let redraw_curves = () => {
+  draw_aanwezig();
+};
+
+// draw functions
+let draw_aanwezig = () => {
+  let dots_aanwezig = g_aanwezig
+    .selectAll("circle.dot")
+    .data(datalijst(), (d: DataPunt) => d.jsdate);
+
+  dots_aanwezig.exit().remove();
+
+  let newdots = dots_aanwezig
+    .enter()
+    .append("circle")
+    .classed("dot", true)
+    .attr("r", dot_r)
+    .attr("cx", (d) => x(d.jsdate))
+    .attr("cy", (d) => y(d.aanwezig_ic_dag));
+
+  dots_aanwezig
+    .transition()
+    .attr("cx", (d) => x(d.jsdate))
+    .attr("cy", (d) => y(d.aanwezig_ic_dag));
+
+  g_aanwezig
+    .select("path")
+    .datum(datalijst())
+    .transition()
+    .attr(
+      "d",
+      //@ts-expect-error //@
+      d3
+        .line()
+        .x(function (d: any) {
+          return x(d.jsdate);
+        })
+        .y(function (d: any) {
+          return y(d.aanwezig_ic_dag);
+        })
+    );
+};

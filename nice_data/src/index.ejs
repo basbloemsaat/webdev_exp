@@ -11,16 +11,32 @@
         box-sizing: border-box;
       }
 
-      nav {
-        border: 1px solid pink;
+      html,
+      body {
+        width: 100vw;
+        height: 100vh;
       }
 
-      /* svg {
+      body {
+        display: grid;
+        grid-template-columns: auto;
+        grid-template-rows: auto 98% auto;
+        justify-content: stretch;
+        overflow-x: hidden;
+      }
+
+      figure {
+        /* border: 1px solid purple; */
+        height: auto;
+        padding: 2%;
+      }
+
+      svg {
         width: 100%;
         min-height: 100%;
         height: auto !important;
         height: 100%;
-      } */
+      }
 
       circle.dot {
         stroke: black;
@@ -29,19 +45,26 @@
       }
 
       .aanwezig_ic_dag path {
-        stroke: cornflowerblue;
+        stroke: black;
+      }
+
+      path {
+        fill: none;
       }
     </style>
   </head>
   <body>
     <nav>
-      <select>
+      <select id="yaxis">
         <option value="linear">Linear y-axis</option>
-        <option value="log">Log y-axis</option>
+        <option value="log" selected>Log y-axis</option>
       </select>
     </nav>
     <figure>
       <svg id="combined_chart"></svg>
     </figure>
+    <footer>
+      data van <a href="https://www.stichting-nice.nl/">Stichting Nice </a>
+    </footer>
   </body>
 </html>

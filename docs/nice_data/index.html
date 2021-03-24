@@ -1,16 +1,29 @@
 <!doctype html><html lang="en"><head><meta charset="UTF-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>stichting nice data</title><style>* {
         margin: 0;
+        box-sizing: border-box;
       }
+
       html,
       body {
-        border: 0;
-        margin: 0;
-        padding: 0;
-        height: 100%;
+        width: 100vw;
+        height: 100vh;
+      }
+
+      body {
+        display: grid;
+        grid-template-columns: auto;
+        grid-template-rows: auto 98% auto;
+        justify-content: stretch;
+        overflow-x: hidden;
+      }
+
+      figure {
+        /* border: 1px solid purple; */
+        height: auto;
+        padding: 2%;
       }
 
       svg {
-        /* border: 1px solid red; */
         width: 100%;
         min-height: 100%;
         height: auto !important;
@@ -24,5 +37,9 @@
       }
 
       .aanwezig_ic_dag path {
-        stroke: cornflowerblue;
-      }</style><script defer="defer" src="nice_chart.js"></script></head><body><svg id="combined_chart"></svg></body></html>
+        stroke: black;
+      }
+
+      path {
+        fill: none;
+      }</style><script defer="defer" src="nice_chart.js"></script></head><body><nav><select id="yaxis"><option value="linear">Linear y-axis</option><option value="log" selected="selected">Log y-axis</option></select></nav><figure><svg id="combined_chart"></svg></figure><footer>data van <a href="https://www.stichting-nice.nl/">Stichting Nice</a></footer></body></html>
