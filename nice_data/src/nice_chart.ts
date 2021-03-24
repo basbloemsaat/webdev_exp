@@ -156,6 +156,9 @@ Promise.all([
 ])
   .then(() => {
     // voor sommige visualisaties zijn meer databronnen nodig, dus die kunnen pas als alles binnen is
+
+    draw_toevoeging();
+    draw_verwijdering();
   })
   .catch((e) => {
     console.log(e);
@@ -208,3 +211,6 @@ let draw_aanwezig = () => {
         })
     );
 };
+
+let draw_toevoeging = () => {};
+let draw_verwijdering = () => {};
