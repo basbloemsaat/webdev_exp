@@ -171,6 +171,8 @@ d3.select("select#yaxis").on("change", (e) => {
 
 let redraw_curves = () => {
   draw_aanwezig();
+  draw_toevoeging();
+  draw_verwijdering();
 };
 
 // draw functions
