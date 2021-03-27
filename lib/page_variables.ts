@@ -5,13 +5,14 @@ class PageVar {
   }
 
   set(varname: string, value: any) {
-    history.pushState('data to be passed', 'Title of the page', '?bla=1');
+    this.params.set(varname, value);
+    history.pushState(this.params.toString(), "", "?" + this.params.toString());
   }
   get(varname: string, default_value?: string): string {
     let value = this.params.get(varname);
-    if(value === null && default_value !== undefined) {
-        this.set(varname, default_value);
-        value = default_value;
+    if (value === null && default_value !== undefined) {
+      this.set(varname, default_value);
+      value = default_value;
     }
     return value;
   }

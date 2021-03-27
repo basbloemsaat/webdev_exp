@@ -3,6 +3,8 @@ import { page_variables } from "../../lib/page_variables";
 
 // pagina init
 let init_form_y_axis = page_variables.get("yaxis", "log");
+let init_form_beta = page_variables.get("beta", "0.85");
+
 const yaxis_input_element = d3.select("select#yaxis");
 yaxis_input_element.property("value", init_form_y_axis);
 yaxis_input_element.on("change", (e) => {
@@ -11,11 +13,10 @@ yaxis_input_element.on("change", (e) => {
   redraw_curves();
 });
 
-let init_form_beta = page_variables.get("beta", "0.85");
 const beta_input_element = d3.select("input#beta");
 beta_input_element.property("value", init_form_beta);
 beta_input_element.on("input", (e) => {
-  console.log("x");
+  page_variables.set("beta", e.target.value);
   redraw_curves();
 });
 
@@ -72,7 +73,6 @@ const g_chart = g.append("g").attr("transform", `translate(${y_axis_width},0)`);
 const g_aanwezig = g_chart.append("g").classed("aanwezig_ic_dag", true);
 g_aanwezig.append("path").attr("id", "def_aanwezig");
 g_aanwezig.append("path").attr("id", "tnt_aanwezig");
-g_aanwezig.append("path").attr("id", "int_aanwezig");
 
 const add_to_hash = (
   verzamel_hash: { [key: string]: { [key: string]: number } },
@@ -245,13 +245,9 @@ let draw_aanwezig = () => {
 
   cutoff.setDate(cutoff.getDate() - 1);
   let data_tnt = data.filter((e) => e.jsdate >= cutoff);
-  console.log(data_tnt);
 
-  //@ts-expect-error
-  let beta = d3.select("input#beta").node().value;
-  console.log(beta);
+  let beta = beta_input_element.property('value');
   drawline(data_def, "def_aanwezig", d3.curveBundle.beta(beta));
-  // drawline(data_def, "int_aanwezig",d3.curveCatmullRom.alpha(1));
   drawline(data_tnt, "tnt_aanwezig");
 };
 
