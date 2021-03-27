@@ -1,4 +1,24 @@
 import * as d3 from "d3";
+import { page_variables } from "../../lib/page_variables";
+
+// pagina init
+let init_form_y_axis = page_variables.get("yaxis", "log");
+const yaxis_input_element = d3.select("select#yaxis");
+yaxis_input_element.property("value", init_form_y_axis);
+yaxis_input_element.on("change", (e) => {
+  page_variables.set("yaxis", e.target.value);
+  set_y_scale(e.target.value);
+  redraw_curves();
+});
+
+let init_form_beta = page_variables.get("beta", "0.85");
+const beta_input_element = d3.select("input#beta");
+beta_input_element.property("value", init_form_beta);
+beta_input_element.on("input", (e) => {
+  console.log("x");
+  redraw_curves();
+});
+
 const verzamel_hash = {};
 let mindate = new Date("2020-03-01");
 let maxdate = new Date("2021-03-01");
@@ -25,7 +45,7 @@ let set_y_scale = (type: string = "log") => {
   if (type == "log") {
     y = d3
       .scaleLog()
-      .domain([1, 1500])
+      .domain([1, 2200])
       .range([vh - x_axis_height, 0]);
   } else {
     y = d3
@@ -37,7 +57,7 @@ let set_y_scale = (type: string = "log") => {
   g_y_axis.call(y_axis);
 };
 
-set_y_scale();
+set_y_scale(yaxis_input_element.property("value"));
 let y_axis_width = g_y_axis.node().getBBox().width;
 
 g_x_axis.attr("transform", `translate(${y_axis_width},${vh - x_axis_height})`);
@@ -50,7 +70,9 @@ g_y_axis.attr("transform", `translate(${y_axis_width},0)`);
 const g_chart = g.append("g").attr("transform", `translate(${y_axis_width},0)`);
 
 const g_aanwezig = g_chart.append("g").classed("aanwezig_ic_dag", true);
-g_aanwezig.append("path");
+g_aanwezig.append("path").attr("id", "def_aanwezig");
+g_aanwezig.append("path").attr("id", "tnt_aanwezig");
+g_aanwezig.append("path").attr("id", "int_aanwezig");
 
 const add_to_hash = (
   verzamel_hash: { [key: string]: { [key: string]: number } },
@@ -164,11 +186,6 @@ Promise.all([
     console.log(e);
   });
 
-d3.select("select#yaxis").on("change", (e) => {
-  set_y_scale(e.target.value);
-  redraw_curves();
-});
-
 let redraw_curves = () => {
   draw_aanwezig();
   draw_toevoeging();
@@ -176,10 +193,35 @@ let redraw_curves = () => {
 };
 
 // draw functions
+let drawline = (
+  data: any,
+  lineid: string,
+  curve: d3.CurveFactory | d3.CurveBundleFactory | any = d3.curveLinear
+) => {
+  g_aanwezig
+    .select(`path#${lineid}`)
+    .datum(data)
+    .transition()
+    .attr(
+      "d",
+      d3
+        .line()
+        .curve(curve)
+        .x(function (d: any) {
+          return x(d.jsdate);
+        })
+        .y(function (d: any) {
+          return y(d.aanwezig_ic_dag);
+        })
+    );
+};
+
 let draw_aanwezig = () => {
+  let data = datalijst();
+
   let dots_aanwezig = g_aanwezig
     .selectAll("circle.dot")
-    .data(datalijst(), (d: DataPunt) => d.jsdate);
+    .data(data, (d: DataPunt) => d.jsdate);
 
   dots_aanwezig.exit().remove();
 
@@ -196,22 +238,21 @@ let draw_aanwezig = () => {
     .attr("cx", (d) => x(d.jsdate))
     .attr("cy", (d) => y(d.aanwezig_ic_dag));
 
-  g_aanwezig
-    .select("path")
-    .datum(datalijst())
-    .transition()
-    .attr(
-      "d",
-      //@ts-expect-error //@
-      d3
-        .line()
-        .x(function (d: any) {
-          return x(d.jsdate);
-        })
-        .y(function (d: any) {
-          return y(d.aanwezig_ic_dag);
-        })
-    );
+  // de laatste drie dagen willen we een aparte lijn maken. Dit is nog geen definitieve data
+  let cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 3);
+  let data_def = data.filter((e) => e.jsdate <= cutoff);
+
+  cutoff.setDate(cutoff.getDate() - 1);
+  let data_tnt = data.filter((e) => e.jsdate >= cutoff);
+  console.log(data_tnt);
+
+  //@ts-expect-error
+  let beta = d3.select("input#beta").node().value;
+  console.log(beta);
+  drawline(data_def, "def_aanwezig", d3.curveBundle.beta(beta));
+  // drawline(data_def, "int_aanwezig",d3.curveCatmullRom.alpha(1));
+  drawline(data_tnt, "tnt_aanwezig");
 };
 
 let draw_toevoeging = () => {};
